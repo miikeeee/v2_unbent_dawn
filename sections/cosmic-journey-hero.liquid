@@ -1,0 +1,355 @@
+{% comment %}
+  ====================================================================================
+  SECTION: Cosmic Journey Hero
+
+  INFO: Eine immersive Scroll-Animation, die eine Überschrift in ein
+        interaktives Sternenfeld verwandelt.
+  ====================================================================================
+{% endcomment %}
+
+{% comment %}
+  CSS wird direkt hier eingebettet, um die Sektion eigenständig zu machen.
+{% endcomment %}
+<style>
+  /* Verhindert horizontales Scrollen, das durch Skalierung entstehen kann */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Der Wrapper, der die Scroll-Distanz erzeugt */
+  #CosmicJourney-{{ section.id }} .cosmic-journey-wrapper {
+    /* WICHTIG: Die Höhe wird jetzt dynamisch über eine Einstellung gesteuert */
+    height: {{ section.settings.scroll_duration }}vh;
+    position: relative;
+    background-color: {{ section.settings.background_color_start }};
+  }
+
+  /* Der Canvas für das Sternenfeld */
+  #CosmicJourney-{{ section.id }} .starfield-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    opacity: 0;
+    background-color: {{ section.settings.background_color_end }};
+  }
+
+  /* Der Container, der "gepinnt" wird */
+  #CosmicJourney-{{ section.id }} .animation-container {
+    height: 100vh;
+    position: relative;
+    z-index: 2;
+    /* Damit das Pinnen korrekt funktioniert */
+    width: 100%;
+  }
+
+  /* Die erste Sektion mit der Überschrift */
+  #CosmicJourney-{{ section.id }} .hero-section {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: {{ section.settings.color_text_start }};
+  }
+
+  #CosmicJourney-{{ section.id }} .hero-heading {
+    font-size: clamp(3rem, 15vw, 12rem);
+    font-weight: 800;
+    line-height: 1;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  /* Die Sektion, in der wir nach der Reise "landen" */
+  #CosmicJourney-{{ section.id }} .content-section {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem;
+    opacity: 0;
+    color: {{ section.settings.color_text_end }};
+  }
+
+  #CosmicJourney-{{ section.id }} .content-section h2 {
+    font-size: clamp(2.5rem, 10vw, 6rem);
+    font-weight: 700;
+  }
+
+  #CosmicJourney-{{ section.id }} .content-section p {
+    font-size: 1.25rem;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+</style>
+
+{% comment %}
+  ====================================================================================
+  HTML-Struktur mit dynamischen Liquid-Variablen
+  ====================================================================================
+{% endcomment %}
+<div id="CosmicJourney-{{ section.id }}" class="cosmic-journey-wrapper">
+  <canvas class="starfield-canvas"></canvas>
+
+  <div class="animation-container">
+    <div class="hero-section">
+      {% if section.settings.heading_start != blank %}
+        <h1 class="hero-heading">{{ section.settings.heading_start | escape }}</h1>
+      {% endif %}
+    </div>
+
+    <div class="content-section">
+      {% if section.settings.heading_end != blank %}
+        <h2>{{ section.settings.heading_end | escape }}</h2>
+      {% endif %}
+      {% if section.settings.text_end != blank %}
+        <div class="rte">{{ section.settings.text_end }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% comment %}
+  ====================================================================================
+  JavaScript-Logik, die für Shopify angepasst wurde
+  ====================================================================================
+{% endcomment %}
+
+<!-- GSAP wird direkt geladen (für Live-Seite in theme.liquid auslagern) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js" defer></script>
+
+<script>
+  document.addEventListener('shopify:section:load', function (event) {
+    // Diese Funktion wird jedes Mal aufgerufen, wenn diese Sektion geladen oder im Editor geändert wird.
+    const sectionId = 'CosmicJourney-' + event.detail.sectionId;
+    const sectionElement = document.getElementById(sectionId);
+
+    // Führe die Animation nur für die spezifische, geladene Sektion aus
+    runCosmicJourneyAnimation(sectionElement);
+  });
+
+  // Führe die Animation auch beim initialen Laden der Seite aus
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.cosmic-journey-wrapper').forEach((section) => {
+      runCosmicJourneyAnimation(section);
+    });
+  });
+
+  function runCosmicJourneyAnimation(sectionElement) {
+    if (!sectionElement) return;
+
+    // --- Teil 1: Canvas Sternenfeld Setup ---
+    const canvas = sectionElement.querySelector('.starfield-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    let stars = [];
+    const numStars = 2000;
+    let mouse = { x: 0, y: 0 };
+    let animationFrameId;
+
+    function init() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      stars = [];
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * canvas.width - canvas.width / 2,
+          y: Math.random() * canvas.height - canvas.height / 2,
+          z: Math.random() * canvas.width,
+        });
+      }
+    }
+
+    function animate() {
+      animationFrameId = requestAnimationFrame(animate);
+      ctx.fillStyle = canvas.style.backgroundColor || 'rgba(10, 10, 26, 0.9)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const mouseX = mouse.x * 0.1;
+      const mouseY = mouse.y * 0.1;
+      ctx.translate(centerX + mouseX, centerY + mouseY);
+
+      stars.forEach((star) => {
+        star.z -= 2;
+        if (star.z < 1) {
+          star.z = canvas.width;
+          star.x = Math.random() * canvas.width - canvas.width / 2;
+          star.y = Math.random() * canvas.height - canvas.height / 2;
+        }
+        const k = 128.0 / star.z;
+        const px = star.x * k;
+        const py = star.y * k;
+        const size = (1 - star.z / canvas.width) * 4;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255, 255, 255, ${1 - star.z / canvas.width})`;
+        ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    const mouseMoveHandler = (e) => {
+      mouse.x = e.clientX - window.innerWidth / 2;
+      mouse.y = e.clientY - window.innerHeight / 2;
+    };
+
+    window.addEventListener('resize', init);
+    window.addEventListener('mousemove', mouseMoveHandler);
+
+    init();
+
+    // --- Teil 2: GSAP Scroll-Animation Setup ---
+    // Warten bis GSAP sicher geladen ist
+    const gsapInterval = setInterval(() => {
+      if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+        clearInterval(gsapInterval);
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Bevor eine neue Animation erstellt wird, töte die alten von dieser Sektion
+        ScrollTrigger.getAll().forEach((trigger) => {
+          if (trigger.trigger && sectionElement.contains(trigger.trigger)) {
+            trigger.kill();
+          }
+        });
+        // Stoppe auch die alte Canvas-Animation, um Performance zu sparen
+        if (window.lastAnimationFrameId && window.lastAnimationFrameId[sectionElement.id]) {
+          cancelAnimationFrame(window.lastAnimationFrameId[sectionElement.id]);
+        }
+
+        const heroHeading = sectionElement.querySelector('.hero-heading');
+        const starfieldCanvas = sectionElement.querySelector('.starfield-canvas');
+        const contentSection = sectionElement.querySelector('.content-section');
+        const animationContainer = sectionElement.querySelector('.animation-container');
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sectionElement,
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1,
+          },
+        });
+
+        tl.to(heroHeading, { scale: 50, opacity: 0, ease: 'power2.inOut' })
+          .to(
+            starfieldCanvas,
+            {
+              opacity: 1,
+              ease: 'power2.inOut',
+              onStart: () => {
+                // Starte die Canvas-Animation erst, wenn sie sichtbar wird
+                animate();
+                if (!window.lastAnimationFrameId) window.lastAnimationFrameId = {};
+                window.lastAnimationFrameId[sectionElement.id] = animationFrameId;
+              },
+            },
+            '<'
+          )
+          .to(contentSection, { opacity: 1, ease: 'power2.inOut' });
+
+        ScrollTrigger.create({
+          trigger: animationContainer,
+          start: 'top top',
+          end: 'bottom bottom',
+          pin: true,
+          pinSpacing: false,
+        });
+      }
+    }, 100);
+  }
+</script>
+
+{% comment %}
+  ====================================================================================
+  SCHEMA: Die Einstellungen für den Kunden im Shopify-Editor
+  ====================================================================================
+{% endcomment %}
+{% schema %}
+{
+  "name": "Kosmische Reise Hero",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Start-Ansicht"
+    },
+    {
+      "type": "text",
+      "id": "heading_start",
+      "label": "Start-Überschrift",
+      "default": "Scroll Down"
+    },
+    {
+      "type": "color",
+      "id": "color_text_start",
+      "label": "Textfarbe (Start)",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "background_color_start",
+      "label": "Hintergrund (Start)",
+      "default": "#000000"
+    },
+    {
+      "type": "header",
+      "content": "End-Ansicht"
+    },
+    {
+      "type": "text",
+      "id": "heading_end",
+      "label": "End-Überschrift",
+      "default": "Die Reise endet hier."
+    },
+    {
+      "type": "richtext",
+      "id": "text_end",
+      "label": "End-Text",
+      "default": "<p>Nutze diesen Bereich, um deine Geschichte zu erzählen oder dein Produkt vorzustellen.</p>"
+    },
+    {
+      "type": "color",
+      "id": "color_text_end",
+      "label": "Textfarbe (Ende)",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "background_color_end",
+      "label": "Hintergrund (Ende/Weltraum)",
+      "default": "#0a0a1a"
+    },
+    {
+      "type": "header",
+      "content": "Animations-Einstellungen"
+    },
+    {
+      "type": "range",
+      "id": "scroll_duration",
+      "min": 150,
+      "max": 500,
+      "step": 50,
+      "unit": "vh",
+      "label": "Dauer der Scroll-Reise",
+      "info": "Bestimmt, wie lange man scrollen muss, bis die Animation abgeschlossen ist. 300vh ist ein guter Standardwert.",
+      "default": 300
+    }
+  ],
+  "presets": [
+    {
+      "name": "Kosmische Reise Hero"
+    }
+  ]
+}
+{% endschema %}
